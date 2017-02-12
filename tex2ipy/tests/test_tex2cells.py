@@ -1,9 +1,4 @@
 from textwrap import dedent
-import sys
-from os.path import dirname
-
-BASE_DIR = dirname(dirname(dirname(__file__)))
-sys.path.append(BASE_DIR)
 
 from tex2ipy.tex2cells import Tex2Cells, get_all_listings
 
