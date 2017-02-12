@@ -147,11 +147,13 @@ class Tex2Cells(object):
 
     def _handle_titlepage(self, node):
         src = self.current['source']
-        src.append('# %s' % self.info.get('title', 'Title'))
+        src.append('# %s\n' % self.info.get('title', 'Title'))
         src.append('\n')
-        src.append('**%s**' % self.info.get('author', 'Author'))
+        src.append('**%s**\n' % self.info.get('author', 'Author'))
         src.append('\n')
-        src.append('**%s**' % self.info.get('date', 'Date'))
+        src.append('**%s**\n' % self.info.get('institute', 'Institute'))
+        src.append('\n')
+        src.append('**%s**\n' % self.info.get('date', 'Date'))
         src.append('\n')
 
     def _handle_pgfimage(self, node):
@@ -171,7 +173,7 @@ class Tex2Cells(object):
 
     def _handle_url(self, node):
         src = self.current['source']
-        src.append('%s \n' % node.string)
+        src.append('<%s>\n' % node.string)
 
     def _handle_document(self, node):
         self.cells = []
