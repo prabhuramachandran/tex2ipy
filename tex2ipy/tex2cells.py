@@ -46,7 +46,7 @@ def _replace_display_math(code):
 
 
 def remove_comments(code):
-    return re.sub(r'%.*$', '', code, flags=re.M)
+    return re.sub('(?<!\\\\)%.*$', '', code, flags=re.M)
 
 
 class Tex2Cells(object):

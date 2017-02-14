@@ -57,14 +57,15 @@ def test_remove_comments():
     hello %world
     world % \alpha_beta
     % \item foo
+    \emph{\%s} is correct
     """)
 
-    print(doc)
     # When
     doc = remove_comments(doc)
 
     # Then
-    assert doc == '\nhello \nworld \n\n'
+    expect = '\nhello \nworld \n\n\emph{\\%s} is correct\n'
+    assert doc == expect
 
 
 def test_lstlisting_with_output_should_make_multiple_cells():
