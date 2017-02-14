@@ -166,6 +166,17 @@ class Tex2Cells(object):
         else:
             print("\item has unknown parent node", node.parent.name)
 
+    def _handle_itemize(self, node):
+        for item in node.contents:
+            self._walk(item)
+        src = self.current['source']
+        if len(src) > 0:
+            if not src[-1].endswith('\n'):
+                src[-1] += '\n'
+        return True
+
+    _handle_enumerate = _handle_itemize
+
     def _handle_lstlisting(self, node):
         self._make_cell(cell_type='code', slide_type='-')
         src = []
@@ -290,8 +301,6 @@ class Tex2Cells(object):
     def _ignore(self, node):
         return False
 
-    _handle_itemize = _ignore
-    _handle_enumerate = _ignore
     _handle_center = _ignore
     _handle_figure = _ignore
     _handle_minipage = _ignore

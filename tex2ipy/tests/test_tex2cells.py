@@ -125,7 +125,7 @@ def test_multiple_lstlistings():
     assert cells[1]['cell_type'] == 'code'
     assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
 
-    assert cells[2]['source'] == ['* blah']
+    assert cells[2]['source'] == ['* blah\n']
     assert cells[2]['cell_type'] == 'markdown'
     assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
 
@@ -192,6 +192,7 @@ def test_itemize_enumerate_works():
         \item aa
         \item bb
        \end{enumerate}
+    hello
     \end{frame}
     \end{document}
     """)
@@ -208,9 +209,9 @@ def test_itemize_enumerate_works():
     assert src[0] == '## Title\n'
     assert src[1] == '\n'
     assert src[2] == '* item 1\n'
-    assert src[3] == '* item 2\n'
+    assert src[3] == '* item 2\n\n'
     assert src[4] == '1. aa\n'
-    assert src[5] == '1. bb'
+    assert src[5] == '1. bb\nhello'
 
 
 def test_images_should_work_figure_ignored():
@@ -402,8 +403,10 @@ def test_inline_equations():
     assert cells[0]['cell_type'] == 'markdown'
     src = cells[0]['source']
     print(src)
-    expect = [r'$\int f(x) dx$' + '\n',
-              r'* hello $\alpha + \frac{1}{2}\beta_{\gamma}$ world']
+    expect = [
+        r'$\int f(x) dx$' + '\n',
+        r'* hello $\alpha + \frac{1}{2}\beta_{\gamma}$ world' + '\n'
+    ]
     assert src == expect
 
 
@@ -482,7 +485,7 @@ def test_pause_should_add_new_fragment():
     assert cells[1]['cell_type'] == 'markdown'
     assert cells[1]['metadata']['slideshow']['slide_type'] == 'fragment'
     src = cells[1]['source']
-    assert src[0] == '* item 2'
+    assert src[0] == '* item 2\n'
 
 
 def test_background_picture():
