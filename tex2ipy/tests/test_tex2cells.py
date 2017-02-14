@@ -1,6 +1,8 @@
+import os
 from textwrap import dedent
 
-from tex2ipy.tex2cells import Tex2Cells, get_all_listings
+from tex2ipy.tex2cells import Tex2Cells, get_all_listings, \
+    get_real_image_from_path
 
 
 def test_get_all_listings():
@@ -9,7 +11,7 @@ def test_get_all_listings():
     \begin{document}
     \begin{lstlisting}
     In []: 1
-    Out []: 1
+    Out[]: 1
     In []: print 1
     \end{lstlisting}
 
@@ -19,7 +21,7 @@ def test_get_all_listings():
 
     \begin{verbatim}
     In []: 2
-    Out []: 2
+    Out[]: 2
     In []: print 2
     \end{verbatim}
 
@@ -31,11 +33,22 @@ def test_get_all_listings():
 
     # Then
     assert len(lst) == 2
-    expect = ['In []: 1\n', 'Out []: 1\n', 'In []: print 1\n']
+    expect = ['In []: 1\n', 'Out[]: 1\n', 'In []: print 1\n']
     assert lst[0] == expect
 
-    expect = ['In []: 2\n', 'Out []: 2\n', 'In []: print 2\n']
+    expect = ['In []: 2\n', 'Out[]: 2\n', 'In []: print 2\n']
     assert lst[1] == expect
+
+
+def test_get_real_image_from_path(tmpdir):
+    for ext in ('.png', '.PNG', '.jpg', '.JPEG', '.SVG', '.gif', '.BMP'):
+        img = tmpdir.join('image' + ext)
+        img.write('')
+        img_path = str(img)
+        path = os.path.splitext(img_path)[0]
+        image = get_real_image_from_path(path)
+        assert image == img_path
+        img.remove()
 
 
 def test_lstlisting_with_output_should_make_multiple_cells():
@@ -44,7 +57,7 @@ def test_lstlisting_with_output_should_make_multiple_cells():
     \begin{document}
     \begin{lstlisting}
     In []: 1
-    Out []: 1
+    Out[]: 1
     In []: print 1
     \end{lstlisting}
     \end{document}
@@ -57,11 +70,52 @@ def test_lstlisting_with_output_should_make_multiple_cells():
     # Then
     assert len(cells) == 2
     assert cells[0]['source'] == ['1\n']
-    assert cells[1]['source'] == ['print 1\n']
     assert cells[0]['cell_type'] == 'code'
-    assert cells[1]['cell_type'] == 'code'
     assert cells[0]['metadata']['slideshow']['slide_type'] == '-'
+    assert cells[1]['source'] == ['print 1\n']
+    assert cells[1]['cell_type'] == 'code'
     assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
+
+
+def test_multiple_lstlistings():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{lstlisting}
+    In []: 1
+    \end{lstlisting}
+    \begin{itemize}
+    \item blah
+    \end{itemize}
+    \begin{verbatim}
+    In []: 2
+    \end{verbatim}
+    \end{frame}
+    \end{document}
+    """)
+    t2c = Tex2Cells(doc)
+
+    # When
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 4
+    assert cells[0]['source'] == []
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
+
+    assert cells[1]['source'] == ['1\n']
+    assert cells[1]['cell_type'] == 'code'
+    assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
+
+    assert cells[2]['source'] == ['* ', 'blah\n']
+    assert cells[2]['cell_type'] == 'markdown'
+    assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
+
+    assert cells[3]['source'] == ['2\n']
+    assert cells[3]['cell_type'] == 'code'
+    assert cells[3]['metadata']['slideshow']['slide_type'] == '-'
 
 
 def test_titlepage_is_created():
@@ -146,13 +200,15 @@ def test_itemize_enumerate_works():
     assert src[8] == 'bb\n'
 
 
-def test_images_should_work():
+def test_images_should_work_figure_ignored():
     # Given
     doc = dedent(r"""
     \begin{document}
     \begin{frame}
     \frametitle{Title}
+    \begin{figure}
     \pgfimage[height=1cm,width=1cm]{images/img1.png}
+    \end{figure}
     \includegraphics[height=1cm,width=1cm]{images/img2.jpg}
     \url{www.python.org}
     \end{frame}
@@ -169,9 +225,37 @@ def test_images_should_work():
     src = cells[0]['source']
     print(src)
     assert src[0] == '## Title\n'
-    assert src[1] == '<img src="images/img1.png">\n'
-    assert src[2] == '<img src="images/img2.jpg">\n'
+    assert src[1] == '<img src="images/img1.png"/>\n'
+    assert src[2] == '<img src="images/img2.jpg"/>\n'
     assert src[3] == '<www.python.org>\n'
+
+
+def test_movie_env_works():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \movie[width=9cm, height=5cm]{}{movies/movie.mp4}
+    \media{poster.png}{movies/movie.mp4}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    print(src)
+    assert src[0] == '<div align="center">\n'
+    assert src[1] == '<video loop controls src="movies/movie.mp4"/>\n'
+    assert src[2] == '</div>\n'
+    assert src[3] == '<div align="center">\n'
+    assert src[4] == '<video loop controls src="movies/movie.mp4"/>\n'
+    assert src[5] == '</div>\n'
 
 
 def test_space_should_be_ignored():
@@ -203,3 +287,226 @@ def test_space_should_be_ignored():
     assert src[2] == ' world\n'
     assert src[3] == ' hola\n'
     assert src[4] == ' namaste\n'
+
+
+def test_quote_works_center_ignored_hrule_works():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{center}
+    \begin{quote}
+    To do
+    or not to do.
+    \end{quote}
+    \hrule
+    \end{center}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    assert len(src) == 3
+    print(src)
+    assert src[0] == '> To do\n'
+    assert src[1] == '> or not to do.\n'
+    assert src[2] == '\n----\n'
+
+
+def test_document_sections():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \section{Introduction}
+    \subsection{Motivation}
+    \subsubsection{Blah}
+    \section{Methods}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 4
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['source'] == ['## Introduction\n']
+    assert cells[1]['cell_type'] == 'markdown'
+    assert cells[1]['source'] == ['### Motivation\n']
+    assert cells[2]['cell_type'] == 'markdown'
+    assert cells[2]['source'] == ['#### Blah\n']
+    assert cells[3]['cell_type'] == 'markdown'
+    assert cells[3]['source'] == ['## Methods\n']
+
+
+def test_minipage_is_ignored():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{minipage}
+    hello world
+    \end{minipage}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['source'] == ['hello world\n']
+
+
+def test_inline_equations():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    $\int f(x) dx$
+    \begin{itemize}
+    \item hello $\alpha + \frac{1}{2} \beta_{\gamma}$ world
+    \end{itemize}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    print(src)
+    expect = [r'$\int f(x) dx$' + '\n',
+              r'* hello $\alpha + \frac{1}{2}\beta_{\gamma}$ world' + '\n']
+    assert src == expect
+
+
+def test_equations():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{equation}
+    \alpha + \frac{1}{2} \beta_1
+    \end{equation}
+    \begin{equation*}
+    \beta = \gamma
+    \end{equation*}
+    \begin{align}
+    \beta = \gamma
+    \end{align}
+    \begin{align*}
+    \beta = \gamma
+    \end{align*}
+    \[v_\theta = \frac{\Gamma}{2\pi r}\]
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    print(src)
+    assert src[0] == '$$\n'
+    assert src[1] == r'\alpha + \frac{1}{2}\beta_1'
+    assert src[2] == '$$\n'
+    assert src[3] == '$$\n'
+    assert src[4] == r'\beta = \gamma'
+    assert src[5] == '$$\n'
+    assert src[6] == '$$\n'
+    assert src[7] == r'\beta = \gamma'
+    assert src[8] == '$$\n'
+    assert src[9] == '$$\n'
+    assert src[10] == r'\beta = \gamma'
+    assert src[11] == '$$\n'
+    assert src[12] == '$$\n'
+    assert src[13] == r'v_\theta = \frac{\Gamma}{2\pi r}'
+    assert src[14] == '$$\n'
+
+
+def test_pause_should_add_new_fragment():
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{itemize}
+    \item item 1
+    \pause
+    \item item 2
+    \end{itemize}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 2
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
+    src = cells[0]['source']
+    assert src[0] == '* '
+    assert src[1] == 'item 1\n'
+
+    assert cells[1]['cell_type'] == 'markdown'
+    assert cells[1]['metadata']['slideshow']['slide_type'] == 'fragment'
+    src = cells[1]['source']
+    assert src[0] == '* '
+    assert src[1] == 'item 2\n'
+
+
+def test_background_picture():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \BackgroundPicture{images/img1.png}
+    \BackgroundPicture{images/blank}
+    \BackgroundPictureWidth{images/img2.jpg}
+    \BackgroundPictureWidth{images/blank}
+    \BackgroundPictureHeight{images/img3.jpg}
+    \BackgroundPictureHeight{images/blank}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 3
+
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    assert len(src) == 1
+    assert src[0] == '<img width="100%" src="images/img1.png"/>\n'
+
+    assert cells[1]['cell_type'] == 'markdown'
+    src = cells[1]['source']
+    assert len(src) == 1
+    assert src[0] == '<img width="100%" src="images/img2.jpg"/>\n'
+
+    assert cells[2]['cell_type'] == 'markdown'
+    src = cells[2]['source']
+    assert len(src) == 1
+    assert src[0] == '<img height="100%" src="images/img3.jpg"/>\n'

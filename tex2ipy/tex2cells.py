@@ -25,11 +25,32 @@ def get_all_listings(code):
     return result
 
 
+def get_real_image_from_path(image_path):
+    """Often images are provided without an extension, so we try to
+    find a suitable one using glob.
+    """
+    formats = ('png', 'jpg', 'svg', 'gif', 'jpeg', 'bmp')
+    image = image_path
+    if not os.path.exists(image):
+        for f in glob(image+'*'):
+            if f.lower().endswith(formats):
+                image = f
+                break
+    return image
+
+
+def _replace_display_math(code):
+    code = code.replace(r'\[', r'\begin{equation*}')
+    return code.replace(r'\]', r'\end{equation*}')
+
+
 class Tex2Cells(object):
     def __init__(self, code):
+        code = _replace_display_math(code)
         self.soup = TexSoup(code)
         self.listings = get_all_listings(code)
         self._listings_count = 0
+        self._in_equation = False
         self.info = {}
         self.cells = []
         self.current = None
@@ -43,17 +64,20 @@ class Tex2Cells(object):
 
     def _walk(self, node):
         if isinstance(node, TexNode):
-            name = node.name.replace('*', '_star')
-            method_name = '_handle_%s' % name
-            method = getattr(self, method_name, None)
-            skip_children = False
-            if method:
-                skip_children = method(node)
+            if self._in_equation:
+                self._handle_str(node)
             else:
-                print("No handler for ", node.name)
-            if not skip_children:
-                for element in node.contents:
-                    self._walk(element)
+                name = node.name.replace('*', '_star')
+                method_name = '_handle_%s' % name
+                method = getattr(self, method_name, None)
+                skip_children = False
+                if method:
+                    skip_children = method(node)
+                else:
+                    print("No handler for ", node.name)
+                if not skip_children:
+                    for element in node.contents:
+                        self._walk(element)
         elif isinstance(node, str):
             if self.current is not None:
                 self._handle_str(node)
@@ -77,6 +101,17 @@ class Tex2Cells(object):
             pass
         self.cells.append(self.current)
 
+    def _handle_equation(self, node):
+        src = self.current['source']
+        src.append('$$\n')
+        src.append(''.join(str(x) for x in node.contents))
+        src.append('$$\n')
+        return True
+
+    _handle_equation_star = _handle_equation
+    _handle_align = _handle_equation
+    _handle_align_star = _handle_equation
+
     def _handle_frame(self, node):
         self._make_cell(cell_type='markdown', slide_type='slide')
 
@@ -88,13 +123,21 @@ class Tex2Cells(object):
 
     def _handle_str(self, node):
         src = self.current['source']
-        src.append(node + '\n')
-
-    def _handle_itemize(self, node):
-        pass
-
-    def _handle_enumerate(self, node):
-        pass
+        data = str(node)
+        if self._in_equation:
+            if '$' in data:
+                self._in_equation = False
+                src[-1] += data + '\n'
+            else:
+                src[-1] += data
+        else:
+            if '$' in data:
+                self._in_equation = True
+                if len(src) == 0:
+                    src.append('')
+                src[-1] += data
+            else:
+                src.append(data + '\n')
 
     def _handle_item(self, node):
         src = self.current['source']
@@ -115,7 +158,7 @@ class Tex2Cells(object):
             if llstrip.startswith(START):
                 idx = line.index(':') + 2
                 src.append(line[idx:])
-            elif llstrip.startswith('Out []:'):
+            elif llstrip.startswith('Out[]:'):
                 self.current['source'] = src
                 self._make_cell(cell_type='code', slide_type='-')
                 src = []
@@ -124,17 +167,19 @@ class Tex2Cells(object):
 
         self._listings_count += 1
 
+        # If there is an itemize after the lstlisting, it will add source
+        # elements into the code cell.
         siblings = list(node.parent.contents)
         s_repr = list(repr(x) for x in siblings)
         index = s_repr.index(repr(node))
-        if index != len(siblings) - 1:
-            self._handle_frame(node)
-            self.current['metadata']['slideshow']['slide_type'] = '-'
-            for item in siblings[index+1:]:
-                self._walk(item)
+        if index < (len(siblings) - 1):
+            self._make_cell(slide_type='-')
         return True
 
     _handle_verbatim = _handle_lstlisting
+
+    def _handle_pause(self, node):
+        self._make_cell(slide_type='fragment')
 
     def _handle_title(self, node):
         self.info[node.name] = list(node.contents)[-1]
@@ -159,30 +204,101 @@ class Tex2Cells(object):
     def _handle_pgfimage(self, node):
         src = self.current['source']
         data = list(node.contents)
-        image = data[-1]
-        formats = ('png', 'jpg', 'svg', 'gif', 'jpeg', 'bmp')
-        if not os.path.exists(image):
-            for f in glob(image+'*'):
-                if f.lower().endswith(formats):
-                    image = f
-                    break
-        src.append('<img src="%s">\n' % image)
+        image = get_real_image_from_path(data[-1])
+        src.append('<img src="%s"/>\n' % image)
         return True
 
     _handle_includegraphics = _handle_pgfimage
+
+    def _handle_movie(self, node):
+        src = self.current['source']
+        data = list(node.contents)
+        movie = data[-1]
+        src.append('<div align="center">\n')
+        src.append('<video loop controls src="%s"/>\n' % movie)
+        src.append('</div>\n')
+        return True
 
     def _handle_url(self, node):
         src = self.current['source']
         src.append('<%s>\n' % node.string)
 
+    def _handle_quote(self, node):
+        src = self.current['source']
+        for line in node.contents:
+            src.append('> %s\n' % line)
+        return True
+
     def _handle_document(self, node):
         self.cells = []
         self.current = None
 
-    def _ignore(self, node):
+    def _handle_hrule(self, node):
+        self.current['source'].append('\n----\n')
+
+    def _handle_section(self, node):
+        self._make_cell()
+        self.current['source'].append('## %s\n' % node.string)
         return True
 
-    _handle_vspace = _ignore
-    _handle_hspace = _ignore
-    _handle_vspace_star = _ignore
-    _handle_hspace_star = _ignore
+    def _handle_subsection(self, node):
+        self._make_cell()
+        self.current['source'].append('### %s\n' % node.string)
+        return True
+
+    def _handle_subsubsection(self, node):
+        self._make_cell()
+        self.current['source'].append('#### %s\n' % node.string)
+        return True
+
+    def _ignore(self, node):
+        return False
+
+    _handle_itemize = _ignore
+    _handle_enumerate = _ignore
+    _handle_center = _ignore
+    _handle_figure = _ignore
+    _handle_minipage = _ignore
+    _handle_centering = _ignore
+    _handle_tiny = _ignore
+    _handle_footnotesize = _ignore
+    _handle_small = _ignore
+    _handle_large = _ignore
+    _handle_Large = _ignore
+    _handle_huge = _ignore
+    _handle_Huge = _ignore
+
+    def _ignore_children(self, node):
+        return True
+
+    _handle_vspace = _ignore_children
+    _handle_hspace = _ignore_children
+    _handle_vspace_star = _ignore_children
+    _handle_hspace_star = _ignore_children
+
+    ####################################################################
+    # The following are not generic LaTeX commands but specific to
+    # the author's macros.
+    _handle_media = _handle_movie
+
+    def _handle_BackgroundPictureWidth(self, node):
+        data = list(node.contents)
+        if os.path.basename(data[-1]) == 'blank':
+            return True
+        self._make_cell(slide_type='slide')
+        src = self.current['source']
+        image = get_real_image_from_path(data[-1])
+        src.append('<img width="100%%" src="%s"/>\n' % image)
+        return True
+
+    def _handle_BackgroundPictureHeight(self, node):
+        data = list(node.contents)
+        if os.path.basename(data[-1]) == 'blank':
+            return True
+        self._make_cell(slide_type='slide')
+        src = self.current['source']
+        image = get_real_image_from_path(data[-1])
+        src.append('<img height="100%%" src="%s"/>\n' % image)
+        return True
+
+    _handle_BackgroundPicture = _handle_BackgroundPictureWidth
