@@ -1,5 +1,9 @@
 # Tex2IPython Notebook
 
+[![Build Status](https://travis-ci.org/prabhuramachandran/tex2ipy.svg?branch=master)](https://travis-ci.org/prabhuramachandran/tex2ipy)
+[![codecov](https://codecov.io/gh/prabhuramachandran/tex2ipy/branch/master/graph/badge.svg)](https://codecov.io/gh/prabhuramachandran/tex2ipy)
+
+
 This package makes it easy to convert a LaTeX file (currently) typically using
 the beamer package into an IPython notebook with
 [RISE](https://github.com/damianavila/RISE).
