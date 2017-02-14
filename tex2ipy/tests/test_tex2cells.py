@@ -2,7 +2,7 @@ import os
 from textwrap import dedent
 
 from tex2ipy.tex2cells import Tex2Cells, get_all_listings, \
-    get_real_image_from_path
+    get_real_image_from_path, remove_comments
 
 
 def test_get_all_listings():
@@ -49,6 +49,22 @@ def test_get_real_image_from_path(tmpdir):
         image = get_real_image_from_path(path)
         assert image == img_path
         img.remove()
+
+
+def test_remove_comments():
+    # Given
+    doc = dedent(r"""
+    hello %world
+    world % \alpha_beta
+    % \item foo
+    """)
+
+    print(doc)
+    # When
+    doc = remove_comments(doc)
+
+    # Then
+    assert doc == '\nhello \nworld \n\n'
 
 
 def test_lstlisting_with_output_should_make_multiple_cells():
@@ -109,7 +125,7 @@ def test_multiple_lstlistings():
     assert cells[1]['cell_type'] == 'code'
     assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
 
-    assert cells[2]['source'] == ['* ', 'blah\n']
+    assert cells[2]['source'] == ['* blah']
     assert cells[2]['cell_type'] == 'markdown'
     assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
 
@@ -159,7 +175,7 @@ def test_titlepage_is_created():
     assert cells[1]['cell_type'] == 'markdown'
     src = cells[1]['source']
     assert src[0] == "## Foo\n"
-    assert src[1] == "Hello world\n"
+    assert src[1] == "Hello world"
 
 
 def test_itemize_enumerate_works():
@@ -190,14 +206,11 @@ def test_itemize_enumerate_works():
     src = cells[0]['source']
     print(src)
     assert src[0] == '## Title\n'
-    assert src[1] == '* '
-    assert src[2] == 'item 1\n'
-    assert src[3] == '* '
-    assert src[4] == 'item 2\n'
-    assert src[5] == '1. '
-    assert src[6] == 'aa\n'
-    assert src[7] == '1. '
-    assert src[8] == 'bb\n'
+    assert src[1] == '\n'
+    assert src[2] == '* item 1\n'
+    assert src[3] == '* item 2\n'
+    assert src[4] == '1. aa\n'
+    assert src[5] == '1. bb'
 
 
 def test_images_should_work_figure_ignored():
@@ -225,9 +238,10 @@ def test_images_should_work_figure_ignored():
     src = cells[0]['source']
     print(src)
     assert src[0] == '## Title\n'
-    assert src[1] == '<img src="images/img1.png"/>\n'
-    assert src[2] == '<img src="images/img2.jpg"/>\n'
-    assert src[3] == '<www.python.org>\n'
+    assert src[1] == ''
+    assert src[2] == '<img src="images/img1.png"/>\n'
+    assert src[3] == '<img src="images/img2.jpg"/>\n'
+    assert src[4] == '<www.python.org> '
 
 
 def test_movie_env_works():
@@ -280,13 +294,10 @@ def test_space_should_be_ignored():
     assert len(cells) == 1
     assert cells[0]['cell_type'] == 'markdown'
     src = cells[0]['source']
-    assert len(src) == 5
+    assert len(src) == 2
     print(src)
     assert src[0] == '## Title\n'
-    assert src[1] == ' hello\n'
-    assert src[2] == ' world\n'
-    assert src[3] == ' hola\n'
-    assert src[4] == ' namaste\n'
+    assert src[1] == ' hello world hola namaste'
 
 
 def test_quote_works_center_ignored_hrule_works():
@@ -366,7 +377,7 @@ def test_minipage_is_ignored():
     # Then
     assert len(cells) == 1
     assert cells[0]['cell_type'] == 'markdown'
-    assert cells[0]['source'] == ['hello world\n']
+    assert cells[0]['source'] == ['hello world']
 
 
 def test_inline_equations():
@@ -392,7 +403,7 @@ def test_inline_equations():
     src = cells[0]['source']
     print(src)
     expect = [r'$\int f(x) dx$' + '\n',
-              r'* hello $\alpha + \frac{1}{2}\beta_{\gamma}$ world' + '\n']
+              r'* hello $\alpha + \frac{1}{2}\beta_{\gamma}$ world']
     assert src == expect
 
 
@@ -466,14 +477,12 @@ def test_pause_should_add_new_fragment():
     assert cells[0]['cell_type'] == 'markdown'
     assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
     src = cells[0]['source']
-    assert src[0] == '* '
-    assert src[1] == 'item 1\n'
+    assert src[0] == '* item 1'
 
     assert cells[1]['cell_type'] == 'markdown'
     assert cells[1]['metadata']['slideshow']['slide_type'] == 'fragment'
     src = cells[1]['source']
-    assert src[0] == '* '
-    assert src[1] == 'item 2\n'
+    assert src[0] == '* item 2'
 
 
 def test_background_picture():
@@ -510,3 +519,55 @@ def test_background_picture():
     src = cells[2]['source']
     assert len(src) == 1
     assert src[0] == '<img height="100%" src="images/img3.jpg"/>\n'
+
+
+def test_text_embellishments():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \textbf{bold} \emph{emph} \texttt{texttt} \lstinline{code}
+    \typ{code} hello
+    \end{frame}
+    \begin{frame}
+    \emph{emph}
+    \end{frame}
+    \begin{frame}
+    \texttt{texttt}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 3
+    src = cells[0]['source']
+    assert src[0] == '**bold** *emph* `texttt` `code` `code`  hello'
+    src = cells[1]['source']
+    assert src[0] == '*emph* '
+    src = cells[2]['source']
+    assert src[0] == '`texttt` '
+
+
+def test_unknown_macro_should_be_in_source():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \something
+    \other{hello}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    src = cells[0]['source']
+    assert src == ['\\something \\other hello']

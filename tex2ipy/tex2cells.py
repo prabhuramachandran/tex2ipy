@@ -1,5 +1,6 @@
 from glob import glob
 import os
+import re
 
 from TexSoup import TexSoup, TexNode
 
@@ -44,9 +45,14 @@ def _replace_display_math(code):
     return code.replace(r'\]', r'\end{equation*}')
 
 
+def remove_comments(code):
+    return re.sub(r'%.*$', '', code, flags=re.M)
+
+
 class Tex2Cells(object):
     def __init__(self, code):
         code = _replace_display_math(code)
+        code = remove_comments(code)
         self.soup = TexSoup(code)
         self.listings = get_all_listings(code)
         self._listings_count = 0
@@ -74,7 +80,7 @@ class Tex2Cells(object):
                 if method:
                     skip_children = method(node)
                 else:
-                    print("No handler for ", node.name)
+                    self._handle_unknown(node)
                 if not skip_children:
                     for element in node.contents:
                         self._walk(element)
@@ -112,41 +118,53 @@ class Tex2Cells(object):
     _handle_align = _handle_equation
     _handle_align_star = _handle_equation
 
+    def _handle_emph(self, node):
+        src = self.current['source']
+        if len(src) == 0:
+            src.append('')
+        src[-1] += '*%s* ' % node.string
+        return True
+
     def _handle_frame(self, node):
         self._make_cell(cell_type='markdown', slide_type='slide')
 
     def _handle_frametitle(self, node):
-        self.current['source'].append(
+        src = self.current['source']
+        src.append(
             '## %s\n' % node.string
         )
+        src.append('')
+
         return True
 
     def _handle_str(self, node):
         src = self.current['source']
         data = str(node)
+        if len(src) == 0:
+            src.append('')
         if self._in_equation:
             if '$' in data:
                 self._in_equation = False
-                src[-1] += data + '\n'
+                src[-1] += data
             else:
                 src[-1] += data
         else:
             if '$' in data:
                 self._in_equation = True
-                if len(src) == 0:
-                    src.append('')
                 src[-1] += data
             else:
-                src.append(data + '\n')
+                src[-1] += data
 
     def _handle_item(self, node):
         src = self.current['source']
+        if len(src) > 0:
+            src[-1] += '\n'
         if node.parent.name == 'itemize':
             src.append('* ')
         elif node.parent.name == 'enumerate':
             src.append('1. ')
         else:
-            print("\item has Unknown parent node", node.parent.name)
+            print("\item has unknown parent node", node.parent.name)
 
     def _handle_lstlisting(self, node):
         self._make_cell(cell_type='code', slide_type='-')
@@ -180,6 +198,23 @@ class Tex2Cells(object):
 
     def _handle_pause(self, node):
         self._make_cell(slide_type='fragment')
+
+    def _handle_textbf(self, node):
+        src = self.current['source']
+        if len(src) == 0:
+            src.append('')
+
+        src[-1] += '**%s** ' % node.string
+        return True
+
+    def _handle_texttt(self, node):
+        src = self.current['source']
+        if len(src) == 0:
+            src.append('')
+        src[-1] += '`%s` ' % node.string
+        return True
+
+    _handle_lstinline = _handle_texttt
 
     def _handle_title(self, node):
         self.info[node.name] = list(node.contents)[-1]
@@ -221,7 +256,8 @@ class Tex2Cells(object):
 
     def _handle_url(self, node):
         src = self.current['source']
-        src.append('<%s>\n' % node.string)
+        src.append('<%s> ' % node.string)
+        return True
 
     def _handle_quote(self, node):
         src = self.current['source']
@@ -276,6 +312,14 @@ class Tex2Cells(object):
     _handle_vspace_star = _ignore_children
     _handle_hspace_star = _ignore_children
 
+    def _handle_unknown(self, node):
+        src = self.current['source']
+        if len(src) == 0:
+            src.append('')
+
+        src[-1] += '\\%s ' % node.name
+        print("No handler for ", node.name)
+
     ####################################################################
     # The following are not generic LaTeX commands but specific to
     # the author's macros.
@@ -283,7 +327,7 @@ class Tex2Cells(object):
 
     def _handle_BackgroundPictureWidth(self, node):
         data = list(node.contents)
-        if os.path.basename(data[-1]) == 'blank':
+        if os.path.basename(data[-1]) in ('blank', 'blank.png'):
             return True
         self._make_cell(slide_type='slide')
         src = self.current['source']
@@ -293,7 +337,7 @@ class Tex2Cells(object):
 
     def _handle_BackgroundPictureHeight(self, node):
         data = list(node.contents)
-        if os.path.basename(data[-1]) == 'blank':
+        if os.path.basename(data[-1]) in ('blank', 'blank.png'):
             return True
         self._make_cell(slide_type='slide')
         src = self.current['source']
@@ -302,3 +346,4 @@ class Tex2Cells(object):
         return True
 
     _handle_BackgroundPicture = _handle_BackgroundPictureWidth
+    _handle_typ = _handle_lstinline
