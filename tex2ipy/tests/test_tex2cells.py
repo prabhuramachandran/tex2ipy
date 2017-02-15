@@ -593,6 +593,29 @@ def test_unknown_macro_should_be_in_source():
     assert src == ['\\something \\other hello']
 
 
+def test_block_is_handled():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{block}{Test block}
+    Hello world
+    \end{block}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    src = cells[0]['source']
+    assert src[0] == '### Test block\n'
+    assert src[1] == 'Hello world'
+
+
 def test_title_can_have_text_embellishments():
     # Given
     doc = dedent(r"""

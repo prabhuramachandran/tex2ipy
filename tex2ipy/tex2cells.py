@@ -107,6 +107,12 @@ class Tex2Cells(object):
             pass
         self.cells.append(self.current)
 
+    def _handle_block(self, node):
+        src = self.current['source']
+        src.append('### %s\n' % node.args[0])
+        src.append('')
+        return False
+
     def _handle_equation(self, node):
         src = self.current['source']
         src.append('$$\n')
