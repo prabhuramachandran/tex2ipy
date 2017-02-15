@@ -107,6 +107,8 @@ def test_multiple_lstlistings():
     \end{itemize}
     \begin{verbatim}
     In []: 2
+    print(2)
+    >>> print('hello')
     \end{verbatim}
     \end{frame}
     \end{document}
@@ -117,22 +119,18 @@ def test_multiple_lstlistings():
     cells = t2c.parse()
 
     # Then
-    assert len(cells) == 4
-    assert cells[0]['source'] == []
-    assert cells[0]['cell_type'] == 'markdown'
+    assert len(cells) == 3
+    assert cells[0]['source'] == ['1\n']
+    assert cells[0]['cell_type'] == 'code'
     assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
 
-    assert cells[1]['source'] == ['1\n']
-    assert cells[1]['cell_type'] == 'code'
+    assert cells[1]['source'] == ['* blah\n']
+    assert cells[1]['cell_type'] == 'markdown'
     assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
 
-    assert cells[2]['source'] == ['* blah\n']
-    assert cells[2]['cell_type'] == 'markdown'
+    assert cells[2]['source'] == ['2\n', 'print(2)\n', ">>> print('hello')\n"]
+    assert cells[2]['cell_type'] == 'code'
     assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
-
-    assert cells[3]['source'] == ['2\n']
-    assert cells[3]['cell_type'] == 'code'
-    assert cells[3]['metadata']['slideshow']['slide_type'] == '-'
 
 
 def test_titlepage_is_created():
@@ -468,6 +466,13 @@ def test_pause_should_add_new_fragment():
     \pause
     \item item 2
     \end{itemize}
+    \begin{lstlisting}
+    print 1
+    \end{lstlisting}
+    \pause
+    \begin{lstlisting}
+    print 2
+    \end{lstlisting}
     \end{frame}
     \end{document}
     """)
@@ -477,7 +482,8 @@ def test_pause_should_add_new_fragment():
     cells = t2c.parse()
 
     # Then
-    assert len(cells) == 2
+    print(cells)
+    assert len(cells) == 4
     assert cells[0]['cell_type'] == 'markdown'
     assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
     src = cells[0]['source']
@@ -487,6 +493,16 @@ def test_pause_should_add_new_fragment():
     assert cells[1]['metadata']['slideshow']['slide_type'] == 'fragment'
     src = cells[1]['source']
     assert src[0] == '* item 2\n'
+
+    assert cells[2]['cell_type'] == 'code'
+    assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
+    src = cells[2]['source']
+    assert src[0] == 'print 1\n'
+
+    assert cells[3]['cell_type'] == 'code'
+    assert cells[3]['metadata']['slideshow']['slide_type'] == 'fragment'
+    src = cells[3]['source']
+    assert src[0] == 'print 2\n'
 
 
 def test_background_picture():
@@ -531,7 +547,7 @@ def test_text_embellishments():
     \begin{document}
     \begin{frame}
     \textbf{bold} \emph{emph} \texttt{texttt} \lstinline{code}
-    \typ{code} hello
+    \typ{code} \kwrd{for} hello \ldots
     \end{frame}
     \begin{frame}
     \emph{emph}
@@ -549,7 +565,7 @@ def test_text_embellishments():
     # Then
     assert len(cells) == 3
     src = cells[0]['source']
-    assert src[0] == '**bold** *emph* `texttt` `code` `code`  hello'
+    assert src[0] == '**bold** *emph* `texttt` `code` `code` `for`  hello ...'
     src = cells[1]['source']
     assert src[0] == '*emph* '
     src = cells[2]['source']
@@ -575,3 +591,25 @@ def test_unknown_macro_should_be_in_source():
     assert len(cells) == 1
     src = cells[0]['source']
     assert src == ['\\something \\other hello']
+
+
+def test_title_can_have_text_embellishments():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \frametitle{\emph{emph} \textbf{bold} $\alpha$  \lstinline{print}}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    print(src)
+    assert src[0] == '## *emph*  **bold**  $\\alpha$  `print` \n'

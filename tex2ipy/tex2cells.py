@@ -130,9 +130,11 @@ class Tex2Cells(object):
 
     def _handle_frametitle(self, node):
         src = self.current['source']
-        src.append(
-            '## %s\n' % node.string
-        )
+        src.append('## ')
+        for item in node.contents:
+            self._walk(item)
+
+        src[-1] += '\n'
         src.append('')
 
         return True
@@ -178,7 +180,15 @@ class Tex2Cells(object):
     _handle_enumerate = _handle_itemize
 
     def _handle_lstlisting(self, node):
-        self._make_cell(cell_type='code', slide_type='-')
+        cell = self.current
+        if cell is not None and len(cell['source']) == 0:
+            # Empty cell already exists, just set its type.
+            cell['cell_type'] = 'code'
+            cell['execution_count'] = None
+            cell['outputs'] = []
+        else:
+            self._make_cell(cell_type='code', slide_type='-')
+        del cell
         src = []
         code = self.listings[self._listings_count]
         START = ('In []:', '...:', '....:', '.....:')
@@ -191,6 +201,8 @@ class Tex2Cells(object):
                 self.current['source'] = src
                 self._make_cell(cell_type='code', slide_type='-')
                 src = []
+            else:
+                src.append(line)
         if len(src) > 0:
             self.current['source'] = src
 
@@ -207,8 +219,17 @@ class Tex2Cells(object):
 
     _handle_verbatim = _handle_lstlisting
 
+    def _handle_ldots(self, node):
+        self._handle_str('...')
+        return True
+
     def _handle_pause(self, node):
-        self._make_cell(slide_type='fragment')
+        src = self.current['source']
+        if len(src) == 0:
+            # No content in the current cell.
+            self.current['metadata']['slideshow']['slide_type'] = 'fragment'
+        else:
+            self._make_cell(slide_type='fragment')
 
     def _handle_textbf(self, node):
         src = self.current['source']
@@ -356,3 +377,4 @@ class Tex2Cells(object):
 
     _handle_BackgroundPicture = _handle_BackgroundPictureWidth
     _handle_typ = _handle_lstinline
+    _handle_kwrd = _handle_lstinline
