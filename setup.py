@@ -18,7 +18,7 @@ def get_readme_rst():
 def get_version():
     import os
     data = {}
-    fname = os.path.join('ipyaml', '__init__.py')
+    fname = os.path.join('tex2ipy', '__init__.py')
     exec(compile(open(fname).read(), fname, 'exec'), data)
     return data.get('__version__')
 
