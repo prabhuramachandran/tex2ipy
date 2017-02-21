@@ -19,4 +19,10 @@ should work hopefully covering 90% of the basic macros.
 ## Customization
 
 If you wish to support more macros or your own, you can subclass `Tex2Cells`
-and add any handlers for your own macros.
+and add any handlers for your own macros. Let us say you add additional
+methods to your subclass and in a file called `customize.py` you can use this
+file as follows:
+
+    $ tex2ipy -c customize.py talk.tex talk.ipynb
+
+This will use your customizations for the conversion.
