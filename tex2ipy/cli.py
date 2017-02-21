@@ -1,4 +1,4 @@
-import sys
+import argparse
 import nbformat
 from nbformat.v4 import new_notebook
 
@@ -27,10 +27,18 @@ def tex2ipy(code):
     return nb
 
 
-def main():
-    code = open(sys.argv[1]).read()
+def main(args=None):
+    parser = argparse.ArgumentParser(
+        "Convert LaTeX beamer slides to IPython notebooks + RISE"
+    )
+    parser.add_argument("input", nargs=1, help="Input file (.tex)")
+    parser.add_argument("output", nargs=1, help="Output file (.ipynb)")
+    args = parser.parse_args(args)
+    with open(args.input[0]) as f:
+        code = f.read()
     nb = tex2ipy(code)
-    nbformat.write(nb, open(sys.argv[2], 'w'))
+    with open(args.output[0], 'w') as f:
+        nbformat.write(nb, f)
 
 
 if __name__ == '__main__':
