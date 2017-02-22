@@ -52,6 +52,17 @@ def test_get_tex2cells_subclass():
     assert cls != Tex2Cells
 
 
+def test_get_tex2cells_subclass_with_no_code_returns_none():
+    # Given
+    stream = StringIO('')
+
+    # When
+    cls = get_tex2cells_subclass(stream, 'test.py')
+
+    # Then
+    assert cls is None
+
+
 def test_main_with_no_options(tmpdir):
     # Given
     src = tmpdir.join('test.tex')

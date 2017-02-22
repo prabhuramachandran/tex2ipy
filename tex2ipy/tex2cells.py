@@ -61,9 +61,17 @@ class Tex2Cells(object):
         self.cells = []
         self.current = None
 
+    def _parse_titlepage(self):
+        nodes = ('title', 'author', 'institute', 'date', 'logo')
+        for node in nodes:
+            for elem in self.soup.find_all(node):
+                method = getattr(self, '_handle_' + node)
+                method(elem)
+
     def parse(self):
         """Parse the given TeX code and return suitable IPython cells.
         """
+        self._parse_titlepage()
         doc = self.soup.find('document')
         self._walk(doc)
         return self.cells
@@ -96,7 +104,7 @@ class Tex2Cells(object):
                 metadata=dict(slideshow=slideshow),
                 source=[]
             )
-        elif cell_type == 'code':
+        else:
             self.current = dict(
                 cell_type=cell_type,
                 metadata=dict(slideshow=slideshow),
@@ -104,7 +112,6 @@ class Tex2Cells(object):
                 outputs=[],
                 execution_count=None
             )
-            pass
         self.cells.append(self.current)
 
     def _handle_block(self, node):
@@ -169,10 +176,10 @@ class Tex2Cells(object):
             src[-1] += '\n'
         if node.parent.name == 'itemize':
             src.append('* ')
-        elif node.parent.name == 'enumerate':
+        elif node.parent.name == 'enumerate':  # pragma: no branch
             src.append('1. ')
         else:
-            print("\item has unknown parent node", node.parent.name)
+            print(r"\item has unknown parent node", node.parent.name)
 
     def _handle_itemize(self, node):
         for item in node.contents:

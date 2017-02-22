@@ -41,6 +41,14 @@ def test_get_all_listings():
 
 
 def test_get_real_image_from_path(tmpdir):
+    # Given a path that exists, check if that image path is given.
+    img = tmpdir.join('image.png')
+    img.write('')
+    img_path = str(img)
+    image = get_real_image_from_path(img_path)
+    assert image == img_path
+    img.remove()
+
     for ext in ('.png', '.PNG', '.jpg', '.JPEG', '.SVG', '.gif', '.BMP'):
         img = tmpdir.join('image' + ext)
         img.write('')
@@ -49,6 +57,15 @@ def test_get_real_image_from_path(tmpdir):
         image = get_real_image_from_path(path)
         assert image == img_path
         img.remove()
+
+    # Case when the image doesn't exist and it is not supported.
+    img = tmpdir.join('image.xpm')
+    img.write('')
+    img_path = str(img)
+    path = os.path.splitext(img_path)[0]
+    image = get_real_image_from_path(path)
+    assert image == path
+    img.remove()
 
 
 def test_remove_comments():
@@ -175,6 +192,37 @@ def test_titlepage_is_created():
     src = cells[1]['source']
     assert src[0] == "## Foo\n"
     assert src[1] == "Hello world"
+
+
+def test_titlepage_is_created_when_title_is_outside_document():
+    # Given
+    doc = dedent(r"""
+    \documentclass[14pt, compress]{beamer}
+    \title{foo}
+    \author{blah}
+    \date{date}
+    \begin{document}
+    \begin{frame}
+    \titlepage
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    src = cells[0]['source']
+    assert src[0] == '# foo\n'
+    assert src[1] == '\n'
+    assert src[2] == '**blah**\n'
+    assert src[3] == '\n'
+    assert src[4] == '**Institute**\n'
+    assert src[5] == '\n'
+    assert src[6] == '**date**\n'
 
 
 def test_itemize_enumerate_works():
