@@ -1,0 +1,87 @@
+\documentclass[14pt, compress]{beamer}
+
+\usepackage{listings}
+
+\title{A sample presentation }
+\author{Ty Coon}
+\date{TODAY}
+\institute{Jobless Inc.}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}
+  \frametitle{Test \texttt{math}}
+  \begin{itemize}
+  \item $\alpha$ is Greek to me
+  \item So is $\beta$
+  \end{itemize}
+  \begin{equation*}
+    e^{i\pi} = -1
+  \end{equation*}
+  \[ \int \sin(x) dx = -\cos(x)\]
+\end{frame}
+
+\subsection{Pause!}
+
+\begin{frame}[fragile]
+  \frametitle{Test the pause macro}
+  \begin{itemize}
+  \item item 1 \emph{Emphasis!}
+    \pause
+  \item item 2 \textbf{Bold!}
+  \end{itemize}
+  \begin{lstlisting}
+    print 1
+  \end{lstlisting}
+  \pause
+  \begin{verbatim}
+    print 2
+  \end{verbatim}
+
+  \begin{enumerate}
+  \item Numbered lists!
+  \item Another item \ldots
+  \item Some inline code with the \lstinline{for} keyword
+  \end{enumerate}
+\end{frame}
+
+\section{Media}
+
+\begin{frame}
+  \frametitle{Now for some images}
+  This will also work with local images but here is an image online.
+  \pgfimage[width=3in]{https://www.python.org/static/community_logos/python-logo-master-v3-TM.png}
+
+  Using the includegraphics macro also works.
+  \includegraphics{https://www.python.org/static/community_logos/python-logo-master-v3-TM.png}
+\end{frame}
+
+\begin{frame}
+  \frametitle{It's show time!}
+  \movie[width=9cm]{}{https://upload.wikimedia.org/wikipedia/commons/c/c0/Big_Buck_Bunny_4K.webm}
+
+  \begin{itemize}
+  \item Again this will work fine with local movies as well.
+  \item The browser needs to support the media though.
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Miscellaneous}
+  \begin{itemize}
+  \item URL's work: \url{http://www.python.org}
+  \end{itemize}
+  \hrule
+  \begin{quote}
+    I wish this were a real quote.
+  \end{quote}
+\end{frame}
+
+\end{document}
