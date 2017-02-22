@@ -92,8 +92,8 @@ class Tex2Cells(object):
                 if not skip_children:
                     for element in node.contents:
                         self._walk(element)
-        elif isinstance(node, str):
-            if self.current is not None:
+        elif isinstance(node, str):  # pragma: no branch
+            if self.current is not None:  # pragma: no branch
                 self._handle_str(node)
 
     def _make_cell(self, cell_type='markdown', slide_type='slide'):
@@ -178,14 +178,14 @@ class Tex2Cells(object):
             src.append('* ')
         elif node.parent.name == 'enumerate':  # pragma: no branch
             src.append('1. ')
-        else:
+        else:  # pragma: no cover
             print(r"\item has unknown parent node", node.parent.name)
 
     def _handle_itemize(self, node):
         for item in node.contents:
             self._walk(item)
         src = self.current['source']
-        if len(src) > 0:
+        if len(src) > 0:  # pragma: no branch
             if not src[-1].endswith('\n'):
                 src[-1] += '\n'
         return True

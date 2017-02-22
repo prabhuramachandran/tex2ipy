@@ -92,7 +92,8 @@ def test_lstlisting_with_output_should_make_multiple_cells():
     \begin{lstlisting}
     In []: 1
     Out[]: 1
-    In []: print 1
+    In []: 1+1
+    Out[]: 2
     \end{lstlisting}
     \end{document}
     """)
@@ -102,11 +103,11 @@ def test_lstlisting_with_output_should_make_multiple_cells():
     cells = t2c.parse()
 
     # Then
-    assert len(cells) == 2
+    assert len(cells) == 3
     assert cells[0]['source'] == ['1\n']
     assert cells[0]['cell_type'] == 'code'
     assert cells[0]['metadata']['slideshow']['slide_type'] == '-'
-    assert cells[1]['source'] == ['print 1\n']
+    assert cells[1]['source'] == ['1+1\n']
     assert cells[1]['cell_type'] == 'code'
     assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
 
@@ -148,6 +149,48 @@ def test_multiple_lstlistings():
     assert cells[2]['source'] == ['2\n', 'print(2)\n', ">>> print('hello')\n"]
     assert cells[2]['cell_type'] == 'code'
     assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
+
+
+def test_lstlistings_inside_itemize():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{itemize}
+    \item item1
+    \begin{lstlisting}
+    In []: 1
+    \end{lstlisting}
+    \item item2
+    \begin{verbatim}
+    print(2)
+    \end{verbatim}
+    \end{itemize}
+    \end{frame}
+    \end{document}
+    """)
+    t2c = Tex2Cells(doc)
+
+    # When
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 4
+    assert cells[0]['source'] == ['* item1']
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
+
+    assert cells[1]['source'] == ['1\n']
+    assert cells[1]['cell_type'] == 'code'
+    assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
+
+    assert cells[2]['source'] == ['* item2']
+    assert cells[2]['cell_type'] == 'markdown'
+    assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
+
+    assert cells[3]['source'] == ['print(2)\n']
+    assert cells[3]['cell_type'] == 'code'
+    assert cells[3]['metadata']['slideshow']['slide_type'] == '-'
 
 
 def test_titlepage_is_created():
