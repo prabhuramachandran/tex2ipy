@@ -130,6 +130,8 @@ class Tex2Cells(object):
     _handle_equation_star = _handle_equation
     _handle_align = _handle_equation
     _handle_align_star = _handle_equation
+    _handle_eqnarray = _handle_equation
+    _handle_eqnarray_star = _handle_equation
 
     def _handle_emph(self, node):
         src = self.current['source']
@@ -260,9 +262,13 @@ class Tex2Cells(object):
         return True
 
     _handle_lstinline = _handle_texttt
+    _handle_py = _handle_lstinline
+    _handle_PythonCode = _handle_lstinline
 
     def _handle_title(self, node):
-        self.info[node.name] = list(node.contents)[-1]
+        contents = list(node.contents)
+        if contents:
+            self.info[node.name] = contents[-1]
         return True
 
     _handle_author = _handle_title
