@@ -2,6 +2,7 @@ import argparse
 
 import nbformat
 from nbformat.v4 import new_notebook
+from nbformat.v4.nbjson import from_dict
 
 from .tex2cells import Tex2Cells
 
@@ -42,8 +43,8 @@ def tex2ipy(code, cls=Tex2Cells):
         livereveal=livereveal
     )
     nb = new_notebook(
-        metadata=md,
-        cells=cells
+        metadata=from_dict(md),
+        cells=from_dict(cells)
     )
     return nb
 
