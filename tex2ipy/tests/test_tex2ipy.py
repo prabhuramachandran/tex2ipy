@@ -28,7 +28,7 @@ def test_tex2ipy_should_make_notebook():
     assert len(cells) == 1
     src = cells[0]['source']
     assert src[0] == '## Foo\n'
-    assert src[1] == 'Hello world'
+    assert src[1] == 'Hello world\n'
 
     md = nb['metadata']
     assert sorted(md.keys()) == ['celltoolbar', 'language', 'livereveal']

@@ -234,7 +234,7 @@ def test_titlepage_is_created():
     assert cells[1]['cell_type'] == 'markdown'
     src = cells[1]['source']
     assert src[0] == "## Foo\n"
-    assert src[1] == "Hello world"
+    assert src[1] == "Hello world\n"
 
 
 def test_titlepage_is_created_when_title_is_outside_document():
@@ -301,7 +301,7 @@ def test_itemize_enumerate_works():
     assert src[2] == '* item 1\n'
     assert src[3] == '* item 2\n\n'
     assert src[4] == '1. aa\n'
-    assert src[5] == '1. bb\nhello'
+    assert src[5] == '1. bb\nhello\n'
 
 
 def test_images_should_work_figure_ignored():
@@ -388,7 +388,7 @@ def test_space_should_be_ignored():
     assert len(src) == 2
     print(src)
     assert src[0] == '## Title\n'
-    assert src[1] == ' hello world hola namaste'
+    assert src[1] == ' hello\n world\n hola\n namaste\n'
 
 
 def test_quote_works_center_ignored_hrule_works():
@@ -468,7 +468,7 @@ def test_minipage_is_ignored():
     # Then
     assert len(cells) == 1
     assert cells[0]['cell_type'] == 'markdown'
-    assert cells[0]['source'] == ['hello world']
+    assert cells[0]['source'] == ['hello world\n']
 
 
 def test_inline_equations():
@@ -495,7 +495,7 @@ def test_inline_equations():
     print(src)
     expect = [
         r'$\int f(x) dx$' + '\n',
-        r'* hello $\alpha + \frac{1}{2}\beta_{\gamma}$ world' + '\n'
+        r'* hello$\alpha + \frac{1}{2} \beta_{\gamma}$ world' + '\n'
     ]
     assert src == expect
 
@@ -532,7 +532,7 @@ def test_equations():
     src = cells[0]['source']
     print(src)
     assert src[0] == '$$\n'
-    assert src[1] == r'\alpha + \frac{1}{2}\beta_1'
+    assert src[1] == r'\alpha + \frac{1}{2} \beta_1' + '\n'
     assert src[2] == '$$\n'
     assert src[3] == '$$\n'
     assert src[4] == r'\beta = \gamma'
@@ -704,7 +704,7 @@ def test_block_is_handled():
     assert len(cells) == 1
     src = cells[0]['source']
     assert src[0] == '### Test block\n'
-    assert src[1] == 'Hello world'
+    assert src[1] == 'Hello world\n'
 
 
 def test_title_can_have_text_embellishments():

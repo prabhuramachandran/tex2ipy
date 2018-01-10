@@ -56,7 +56,6 @@ class Tex2Cells(object):
         self.soup = TexSoup(code)
         self.listings = get_all_listings(code)
         self._listings_count = 0
-        self._in_equation = False
         self.info = {}
         self.cells = []
         self.current = None
@@ -78,20 +77,17 @@ class Tex2Cells(object):
 
     def _walk(self, node):
         if isinstance(node, TexNode):
-            if self._in_equation:
-                self._handle_str(node)
+            name = node.name.replace('*', '_star')
+            method_name = '_handle_%s' % name
+            method = getattr(self, method_name, None)
+            skip_children = False
+            if method:
+                skip_children = method(node)
             else:
-                name = node.name.replace('*', '_star')
-                method_name = '_handle_%s' % name
-                method = getattr(self, method_name, None)
-                skip_children = False
-                if method:
-                    skip_children = method(node)
-                else:
-                    self._handle_unknown(node)
-                if not skip_children:
-                    for element in node.contents:
-                        self._walk(element)
+                self._handle_unknown(node)
+            if not skip_children:
+                for element in node.contents:
+                    self._walk(element)
         elif isinstance(node, str):  # pragma: no branch
             if self.current is not None:  # pragma: no branch
                 self._handle_str(node)
@@ -114,6 +110,12 @@ class Tex2Cells(object):
             )
         self.cells.append(self.current)
 
+    def _clear_newline(self, s):
+        if s.startswith(('\n', '\r')):
+            return s.lstrip()
+        else:
+            return s
+
     def _handle_block(self, node):
         src = self.current['source']
         src.append('### %s\n' % node.args[0])
@@ -123,7 +125,7 @@ class Tex2Cells(object):
     def _handle_equation(self, node):
         src = self.current['source']
         src.append('$$\n')
-        src.append(''.join(str(x) for x in node.contents))
+        src.append(''.join(self._clear_newline(str(x)) for x in node.contents))
         src.append('$$\n')
         return True
 
@@ -156,21 +158,11 @@ class Tex2Cells(object):
 
     def _handle_str(self, node):
         src = self.current['source']
-        data = str(node)
+        data = self._clear_newline(str(node))
         if len(src) == 0:
             src.append('')
-        if self._in_equation:
-            if '$' in data:
-                self._in_equation = False
-                src[-1] += data
-            else:
-                src[-1] += data
-        else:
-            if '$' in data:
-                self._in_equation = True
-                src[-1] += data
-            else:
-                src[-1] += data
+
+        src[-1] += data
 
     def _handle_item(self, node):
         src = self.current['source']
@@ -313,7 +305,8 @@ class Tex2Cells(object):
     def _handle_quote(self, node):
         src = self.current['source']
         for line in node.contents:
-            src.append('> %s\n' % line)
+            for l in line.lstrip().splitlines():
+                src.append('> %s\n' % l)
         return True
 
     def _handle_document(self, node):
