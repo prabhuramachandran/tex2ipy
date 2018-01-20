@@ -33,7 +33,10 @@ This will use your customizations for the conversion.
 
 ## Known issues
 
-`tex2ipy` uses the very convenient
+- Does not yet handle tables/tabular environments.
+
+- `tex2ipy` uses the very convenient
 [TexSoup](https://github.com/alvinwan/TexSoup) package to parse LaTeX. This
-package has a few issues with parsing inline math expressions embedded inside
-itemize/enumerate lists. This can cause some issues when converting files.
+package has a few minor issues with parsing inline math expressions embedded
+inside itemize/enumerate lists. This can cause some issues when converting
+files.
