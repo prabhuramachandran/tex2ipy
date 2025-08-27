@@ -3,6 +3,7 @@ import os
 import re
 
 from TexSoup import TexSoup, TexNode
+from TexSoup.data import BraceGroup, BracketGroup
 
 
 def get_all_listings(code):
@@ -59,6 +60,7 @@ class Tex2Cells(object):
         self.info = {}
         self.cells = []
         self.current = None
+        self._ws = re.compile(r'(.*)(\s+)')
 
     def _parse_titlepage(self):
         nodes = ('title', 'author', 'institute', 'date', 'logo')
@@ -77,7 +79,7 @@ class Tex2Cells(object):
 
     def _walk(self, node):
         if isinstance(node, TexNode):
-            name = node.name.replace('*', '_star')
+            name = node.name.replace('*', '_star').replace('$', 'dollar')
             method_name = '_handle_%s' % name
             method = getattr(self, method_name, None)
             skip_children = False
@@ -111,16 +113,41 @@ class Tex2Cells(object):
         self.cells.append(self.current)
 
     def _clear_newline(self, s):
+        if self._has_trailing_whitespace_and_nl(s):
+            s = s.rstrip() + '\n'
+        else:
+            s = s.rstrip()
         if s.startswith(('\n', '\r')):
             return s.lstrip()
         else:
             return s
 
+    def _do_arg(self, arg):
+        if isinstance(arg, BraceGroup):
+            return str(arg).replace('{', '').replace('}', '')
+        elif isinstance(arg, BracketGroup):
+            return str(arg).replace('[', '').replace(']', '')
+        else:
+            return str(arg)
+
     def _handle_block(self, node):
         src = self.current['source']
-        src.append('### %s\n' % node.args[0])
+        block_title = self._do_arg(node.args[0])
+        src.append('### %s\n' % block_title)
         src.append('')
-        return False
+        if block_title == str(node.contents[0]):
+            for element in node.contents[1:]:
+                self._walk(element)
+            return True
+        else:
+            return False
+
+    def _handle_dollar(self, node):
+        src = self.current['source']
+        if len(src) == 0:
+            src.append('')
+        src[-1] += ' ' + str(node) + ' '
+        return True
 
     def _handle_equation(self, node):
         src = self.current['source']
@@ -165,17 +192,25 @@ class Tex2Cells(object):
         src[-1] += data
 
     def _handle_item(self, node):
+        if self.current['cell_type'] == 'code':
+            self._make_cell(slide_type='-')
         src = self.current['source']
         if len(src) > 0:
             src[-1] += '\n'
         if node.parent.name == 'itemize':
-            src.append('* ')
+            src.append('*')
         elif node.parent.name == 'enumerate':  # pragma: no branch
-            src.append('1. ')
+            src.append('1.')
         else:  # pragma: no cover
             print(r"\item has unknown parent node", node.parent.name)
 
+    def _has_trailing_whitespace_and_nl(self, s):
+        x = self._ws.search(s)
+        return x and '\n' in x.groups()[1]
+
     def _handle_itemize(self, node):
+        if self.current['cell_type'] == 'code':
+            self._make_cell(slide_type='-')
         for item in node.contents:
             self._walk(item)
         src = self.current['source']
@@ -215,19 +250,12 @@ class Tex2Cells(object):
 
         self._listings_count += 1
 
-        # If there is an itemize after the lstlisting, it will add source
-        # elements into the code cell.
-        siblings = list(node.parent.contents)
-        s_repr = list(repr(x) for x in siblings)
-        index = s_repr.index(repr(node))
-        if index < (len(siblings) - 1):
-            self._make_cell(slide_type='-')
         return True
 
     _handle_verbatim = _handle_lstlisting
 
     def _handle_ldots(self, node):
-        self._handle_str('...')
+        self._handle_str(' ...')
         return True
 
     def _handle_pause(self, node):

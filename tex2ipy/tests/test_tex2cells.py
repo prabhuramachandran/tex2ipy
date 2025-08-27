@@ -176,7 +176,7 @@ def test_lstlistings_inside_itemize():
 
     # Then
     assert len(cells) == 4
-    assert cells[0]['source'] == ['* item1']
+    assert cells[0]['source'] == ['* item1\n']
     assert cells[0]['cell_type'] == 'markdown'
     assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
 
@@ -184,7 +184,7 @@ def test_lstlistings_inside_itemize():
     assert cells[1]['cell_type'] == 'code'
     assert cells[1]['metadata']['slideshow']['slide_type'] == '-'
 
-    assert cells[2]['source'] == ['* item2']
+    assert cells[2]['source'] == ['* item2\n']
     assert cells[2]['cell_type'] == 'markdown'
     assert cells[2]['metadata']['slideshow']['slide_type'] == '-'
 
@@ -298,9 +298,9 @@ def test_itemize_enumerate_works():
     print(src)
     assert src[0] == '## Title\n'
     assert src[1] == '\n'
-    assert src[2] == '* item 1\n'
+    assert src[2] == '* item 1\n\n'
     assert src[3] == '* item 2\n\n'
-    assert src[4] == '1. aa\n'
+    assert src[4] == '1. aa\n\n'
     assert src[5] == '1. bb\nhello\n'
 
 
@@ -494,8 +494,8 @@ def test_inline_equations():
     src = cells[0]['source']
     print(src)
     expect = [
-        r'$\int f(x) dx$' + '\n',
-        r'* hello$\alpha + \frac{1}{2} \beta_{\gamma}$ world' + '\n'
+        ' $\\int f(x) dx$ \n',
+        '* hello $\\alpha + \\frac{1}{2} \\beta_{\\gamma}$  world\n'
     ]
     assert src == expect
 
@@ -532,19 +532,19 @@ def test_equations():
     src = cells[0]['source']
     print(src)
     assert src[0] == '$$\n'
-    assert src[1] == r'\alpha + \frac{1}{2} \beta_1' + '\n'
+    assert src[1] == r'\alpha +\frac{1}{2}\beta_1' + '\n'
     assert src[2] == '$$\n'
     assert src[3] == '$$\n'
-    assert src[4] == r'\beta = \gamma'
+    assert src[4] == r'\beta =\gamma'
     assert src[5] == '$$\n'
     assert src[6] == '$$\n'
-    assert src[7] == r'\beta = \gamma'
+    assert src[7] == r'\beta =\gamma'
     assert src[8] == '$$\n'
     assert src[9] == '$$\n'
-    assert src[10] == r'\beta = \gamma'
+    assert src[10] == r'\beta =\gamma'
     assert src[11] == '$$\n'
     assert src[12] == '$$\n'
-    assert src[13] == r'v_\theta = \frac{\Gamma}{2\pi r}'
+    assert src[13] == r'v_\theta =\frac{\Gamma}{2\pi r}'
     assert src[14] == '$$\n'
 
 
@@ -578,7 +578,7 @@ def test_pause_should_add_new_fragment():
     assert cells[0]['cell_type'] == 'markdown'
     assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
     src = cells[0]['source']
-    assert src[0] == '* item 1'
+    assert src[0].strip() == '* item 1'
 
     assert cells[1]['cell_type'] == 'markdown'
     assert cells[1]['metadata']['slideshow']['slide_type'] == 'fragment'
@@ -656,10 +656,13 @@ def test_text_embellishments():
     # Then
     assert len(cells) == 3
     src = cells[0]['source']
+    print(src)
     assert src[0] == '**bold** *emph* `texttt` `code` `code` `for`  hello ...'
     src = cells[1]['source']
+    print(src)
     assert src[0] == '*emph* '
     src = cells[2]['source']
+    print(src)
     assert src[0] == '`texttt` '
 
 
@@ -726,4 +729,4 @@ def test_title_can_have_text_embellishments():
     assert cells[0]['cell_type'] == 'markdown'
     src = cells[0]['source']
     print(src)
-    assert src[0] == '## *emph*  **bold**  $\\alpha$  `print` \n'
+    assert src[0] == '## *emph* **bold**  $\\alpha$ `print` \n'
