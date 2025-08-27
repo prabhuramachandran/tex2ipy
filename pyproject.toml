@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tex2ipy"
+version = "0.4.0"
+description = "Convert beamer presentations to IPython notebooks."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "TexSoup",
+    "nbformat",
+]
+
+[project.urls]
+Homepage = "https://github.com/prabhuramachandran/tex2ipy"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
