@@ -127,12 +127,15 @@ class Tex2Cells(object):
             return str(arg).replace('{', '').replace('}', '')
         elif isinstance(arg, BracketGroup):
             return str(arg).replace('[', '').replace(']', '')
-        else:
+        else:  # pragma: no cover
             return str(arg)
 
     def _handle_block(self, node):
         src = self.current['source']
-        block_title = self._do_arg(node.args[0])
+        if node.args:
+            block_title = self._do_arg(node.args[0])
+        else:
+            block_title = ''
         src.append('### %s\n' % block_title)
         src.append('')
         if block_title == str(node.contents[0]):
@@ -171,6 +174,12 @@ class Tex2Cells(object):
 
     def _handle_frame(self, node):
         self._make_cell(cell_type='markdown', slide_type='slide')
+        if node.args:
+            option = self._do_arg(node.args[0])
+            if option == str(node.contents[0]):
+                for item in node.contents[1:]:
+                    self._walk(item)
+                return True
 
     def _handle_frametitle(self, node):
         src = self.current['source']
@@ -213,10 +222,6 @@ class Tex2Cells(object):
             self._make_cell(slide_type='-')
         for item in node.contents:
             self._walk(item)
-        src = self.current['source']
-        if len(src) > 0:  # pragma: no branch
-            if not src[-1].endswith('\n'):
-                src[-1] += '\n'
         return True
 
     _handle_enumerate = _handle_itemize
@@ -259,12 +264,7 @@ class Tex2Cells(object):
         return True
 
     def _handle_pause(self, node):
-        src = self.current['source']
-        if len(src) == 0:
-            # No content in the current cell.
-            self.current['metadata']['slideshow']['slide_type'] = 'fragment'
-        else:
-            self._make_cell(slide_type='fragment')
+        self._make_cell(slide_type='fragment')
 
     def _handle_textbf(self, node):
         src = self.current['source']

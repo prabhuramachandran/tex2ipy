@@ -449,6 +449,26 @@ def test_document_sections():
     assert cells[3]['source'] == ['## Methods\n']
 
 
+def test_frame_options_are_dropped():
+    # Given
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}[fragile]
+    hello world
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['source'] == ['hello world\n']
+
+
 def test_minipage_is_ignored():
     # Given
     doc = dedent(r"""
@@ -546,6 +566,35 @@ def test_equations():
     assert src[12] == '$$\n'
     assert src[13] == r'v_\theta =\frac{\Gamma}{2\pi r}'
     assert src[14] == '$$\n'
+
+
+def test_pause_should_work_at_start():
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \pause
+    \begin{itemize}
+    \item item 1
+    \item item 2
+    \end{itemize}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    print(cells)
+    assert len(cells) == 2
+    assert cells[0]['cell_type'] == 'markdown'
+    assert cells[0]['metadata']['slideshow']['slide_type'] == 'slide'
+    assert cells[1]['cell_type'] == 'markdown'
+    assert cells[1]['metadata']['slideshow']['slide_type'] == 'fragment'
+    src = cells[1]['source']
+    assert src[0].strip() == '* item 1'
+    assert src[1].strip() == '* item 2'
 
 
 def test_pause_should_add_new_fragment():
@@ -707,6 +756,27 @@ def test_block_is_handled():
     assert len(cells) == 1
     src = cells[0]['source']
     assert src[0] == '### Test block\n'
+    assert src[1] == 'Hello world\n'
+
+    # Given a block with no header
+    doc = dedent(r"""
+    \begin{document}
+    \begin{frame}
+    \begin{block}
+    Hello world
+    \end{block}
+    \end{frame}
+    \end{document}
+    """)
+
+    # When
+    t2c = Tex2Cells(doc)
+    cells = t2c.parse()
+
+    # Then
+    assert len(cells) == 1
+    src = cells[0]['source']
+    assert src[0] == '### \n'
     assert src[1] == 'Hello world\n'
 
 
