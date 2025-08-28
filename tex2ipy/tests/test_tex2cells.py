@@ -81,7 +81,7 @@ def test_remove_comments():
     doc = remove_comments(doc)
 
     # Then
-    expect = '\nhello \nworld \n\n\emph{\\%s} is correct\n'
+    expect = '\nhello \nworld \n\n\\emph{\\%s} is correct\n'
     assert doc == expect
 
 

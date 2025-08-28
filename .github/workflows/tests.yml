@@ -24,3 +24,6 @@ jobs:
         run: |
           coverage erase
           coverage run -m pytest -v
+      - name: Report
+        if: ${{ success() }}
+        run: coverage report
